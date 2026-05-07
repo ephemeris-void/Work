@@ -1,0 +1,115 @@
+<?xml version="1.0"?>
+<robot name="fireball">
+
+   <link name="base_link">
+      <visual>
+
+         <geometry>
+            <cylinder radius="0.05" length="1.0" />
+         </geometry>
+      </visual>
+   </link>
+
+   <link name="nose_cone">
+      <visual>
+
+         <geometry>
+            <cylinder radius="0.025" length="0.3" />
+         </geometry>
+      </visual>
+   </link>
+
+   <link name="nozzle">
+      <visual>
+
+         <geometry>
+            <cylinder radius="0.06" length="0.1" />
+         </geometry>
+      </visual>
+
+   </link>
+
+   <link name="fin1">
+      <visual>
+
+         <geometry>
+            <box size="0.15 0.005 0.2" />
+         </geometry>
+      </visual>
+
+   </link>
+   <link name="fin2">
+      <visual>
+
+         <geometry>
+            <box size="0.15 0.005 0.2" />
+         </geometry>
+      </visual>
+
+   </link>
+   <link name="fin3">
+      <visual>
+
+         <geometry>
+            <box size="0.15 0.005 0.2" />
+         </geometry>
+      </visual>
+
+   </link>
+   <link name="fin4">
+      <visual>
+
+         <geometry>
+            <box size="0.15 0.005 0.2" />
+         </geometry>
+      </visual>
+
+   </link>
+
+
+   <joint name="base_nose_cone" type="fixed">
+      <origin xyz="0.0 0.0 0.65" rpy="0.0 0.0 0.0" />
+      <parent link="base_link" />
+      <child link="nose_cone" />
+
+   </joint>
+
+
+   <joint name="base_nozzle" type="fixed">
+      <origin xyz="0.0 0.0 -0.55" rpy="0.0 0.0 0.0" />
+      <parent link="base_link" />
+      <child link="nozzle" />
+
+   </joint>
+
+
+   <joint name="base_fin1" type="fixed">
+      <origin xyz="0.1 0.0 -0.35" rpy="0.0 0.0 0.0" />
+      <parent link="base_link" />
+      <child link="fin1" />
+
+   </joint>
+
+   <joint name="base_fin2" type="fixed">
+      <origin xyz="0.0 0.1 -0.35" rpy="0.0 0.0 1.5708" />
+      <parent link="base_link" />
+      <child link="fin2" />
+
+   </joint>
+
+   <joint name="base_fin3" type="fixed">
+      <origin xyz="-0.1 0.0 -0.35" rpy="0.0 0.0 0.0" />
+      <parent link="base_link" />
+      <child link="fin3" />
+
+   </joint>
+
+   <joint name="base_fin4" type="fixed">
+      <origin xyz="0.0 -0.1 -0.35" rpy="0.0 0.0 1.5708" />
+      <parent link="base_link" />
+      <child link="fin4" />
+
+   </joint>
+
+
+</robot>
