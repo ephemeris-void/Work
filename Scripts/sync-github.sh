@@ -8,6 +8,7 @@ WORK_DIR="$HOME/github_work"
 RESEARCH_DIR="$HOME/github_research"
 LOG_FILE="$HOME/.sync_log"
 LAST_SYNC="$HOME/.last_sync"
+PUSHED_FILES="$HOME/.pushed_files"
 DATE=$(date +%Y-%m-%d)
 TIME=$(date +%H:%M:%S)
 
@@ -24,7 +25,7 @@ SECRET_RE='(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AIza[A-Za-z0-9_-]{
 
 R='\033[1;31m' G='\033[1;32m' Y='\033[1;33m' C='\033[1;36m' W='\033[1;37m' D='\033[0m'
 
-# ── GLOBALS (সব indexed array, কোনো associative array নেই) ───────────────────
+# ── GLOBALS ───────────────────────────────────────────────────────────────────
 declare -a FOLDER_PATHS=()
 declare -a FOLDER_FILELISTS=()
 declare -a ALL_FILES=()
@@ -108,7 +109,6 @@ _secret() {
     grep -Eiq "$SECRET_RE" "$1" 2>/dev/null
 }
 
-# 0=pass, 1=block — reason printed internally
 scan() {
     local f="$1"
     if _blocked_name "$f"; then
@@ -158,6 +158,10 @@ detect_folders() {
     local f dir found i
     while IFS= read -r f; do
         [[ -z "$f" ]] && continue
+        # skip already pushed files
+        if [[ -f "$PUSHED_FILES" ]] && grep -qxF "$f" "$PUSHED_FILES"; then
+            continue
+        fi
         dir=$(dirname "$f")
         found=-1
         for i in "${!FOLDER_PATHS[@]}"; do
@@ -198,6 +202,8 @@ step_folder() {
         show_last_sync
         if [[ ${#FOLDER_PATHS[@]} -eq 0 ]]; then
             echo -e "${Y}  no modified files found${D}"
+            touch "$LAST_SYNC"
+            rm -f "$PUSHED_FILES"
             exit 0
         fi
         echo -e "${W}  modified folders:${D}\n"
@@ -211,8 +217,8 @@ step_folder() {
         hint
         read -r sel
         case "$sel" in
-            q|Q) exit 0 ;;
-            b|B) exit 0 ;;
+            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
+            b|B) rm -f "$PUSHED_FILES"; exit 0 ;;
         esac
         if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#FOLDER_PATHS[@]} )); then
             SEL_IDX=$((sel-1))
@@ -240,7 +246,7 @@ step_files() {
         hint
         read -r sel
         case "$sel" in
-            q|Q) exit 0 ;;
+            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
             b|B) nav_back; return ;;
         esac
         SELECTED_FILES=()
@@ -285,7 +291,7 @@ step_scan() {
     hint
     read -r sel
     case "$sel" in
-        q|Q) exit 0 ;;
+        q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
         b|B) nav_back; return ;;
         y|Y) nav_push; STEP=4; return ;;
     esac
@@ -301,7 +307,7 @@ step_messages() {
         hint
         read -r mode
         case "$mode" in
-            q|Q) exit 0 ;;
+            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
             b|B) nav_back; return ;;
             o|O|i|I) ;;
             *) continue ;;
@@ -316,7 +322,7 @@ step_messages() {
                 read -r msg
                 case "$msg" in
                     b|B) nav_back; return ;;
-                    q|Q) exit 0 ;;
+                    q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
                 esac
                 [[ -z "$msg" ]] && echo -e "  ${R}cannot be empty${D}" && continue
                 break
@@ -331,7 +337,7 @@ step_messages() {
                     read -r msg
                     case "$msg" in
                         b|B) nav_back; return ;;
-                        q|Q) exit 0 ;;
+                        q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
                     esac
                     [[ -z "$msg" ]] && msg="update $(basename "$f")"
                     break
@@ -354,7 +360,7 @@ step_target() {
         hint
         read -r sel
         case "$sel" in
-            q|Q) exit 0 ;;
+            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
             b|B) nav_back; return ;;
             1) TARGET_REPO_DIR="$WORK_DIR"; TARGET_REMOTE="$WORK_REMOTE"; TARGET_LABEL="work" ;;
             2) TARGET_REPO_DIR="$RESEARCH_DIR"; TARGET_REMOTE="$RESEARCH_REMOTE"; TARGET_LABEL="research" ;;
@@ -382,7 +388,7 @@ step_target() {
             hint
             read -r fsel
             case "$fsel" in
-                q|Q) exit 0 ;;
+                q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
                 b|B) break ;;
                 n|N)
                     while true; do
@@ -421,7 +427,7 @@ step_preview() {
         read -r sel
         case "$sel" in
             y|Y) STEP=7; return ;;
-            q|Q) exit 0 ;;
+            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
             b|B) nav_back; return ;;
         esac
     done
@@ -456,6 +462,7 @@ do_push() {
         if git commit -m "${COMMIT_MSGS[$i]}" 2>&1 | grep -v '^$' | sed 's/^/  /'; then
             echo -e "  ${G}✓${D}  $rel"
             pushed=$((pushed+1))
+            echo "$f" >> "$PUSHED_FILES"
         else
             echo -e "  ${R}✗${D}  $rel  — commit failed"
             failed=$((failed+1))
@@ -472,7 +479,6 @@ do_push() {
     done
     [[ $ok -eq 0 ]] && { echo -e "  ${R}push failed${D}"; exit 1; }
 
-    touch "$LAST_SYNC"
     for i in "${!COMMIT_FILES[@]}"; do
         echo "$DATE | $(basename "${COMMIT_FILES[$i]}") | ${COMMIT_MSGS[$i]} | $TARGET_SUBFOLDER | $TARGET_LABEL" >> "$LOG_FILE"
     done
@@ -489,6 +495,7 @@ do_push() {
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 hdr
 echo -e "${W}  scanning for modified files...${D}\n"
+rm -f "$PUSHED_FILES"
 detect_folders
 
 while true; do
@@ -499,6 +506,6 @@ while true; do
         4) step_messages ;;
         5) step_target ;;
         6) step_preview ;;
-        7) do_push; exit 0 ;;
+        7) do_push; STEP=1; detect_folders ;;
     esac
 done
