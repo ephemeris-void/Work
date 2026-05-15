@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
-
+ 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 WORK_REMOTE="https://github.com/ephemeris-void/Work.git"
 RESEARCH_REMOTE="https://github.com/ephemeris-void/research-.git"
@@ -11,20 +11,20 @@ LAST_SYNC="$HOME/.last_sync"
 PUSHED_FILES="$HOME/.pushed_files"
 DATE=$(date +%Y-%m-%d)
 TIME=$(date +%H:%M:%S)
-
+ 
 WATCH_DIRS=("$HOME/lab" "$HOME/work" "$HOME/notes" "$HOME/re" "$HOME/new_cast" "$HOME/tools")
-
+ 
 SAFE_EXT=(c cc cpp cxx h hh hpp hxx py sh bash zsh rs go js ts json yaml yml toml xml md txt rst tex html css java csv cmake asm s S)
 SAFE_NAMES=(Makefile CMakeLists.txt README LICENSE package.xml .gitignore)
-
+ 
 BLOCK_EXT=(o out a so pyc class iso img qcow2 db sqlite pem key p12 pfx tar gz zip 7z bin exe deb rpm)
 BLOCK_NAMES=(.env .git-credentials .netrc id_rsa id_ed25519 id_ecdsa id_dsa .bash_history .zsh_history)
 BLOCK_DIRS=(build install log .cache __pycache__ .git devel node_modules dist)
-
+ 
 SECRET_RE='(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AIza[A-Za-z0-9_-]{35}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|password[[:space:]]*=[[:space:]]*[^[:space:]#]{4,}|passwd[[:space:]]*=[[:space:]]*[^[:space:]#]{4,}|secret[[:space:]]*=[[:space:]]*[^[:space:]#]{4,}|api_key[[:space:]]*=[[:space:]]*[^[:space:]#]{4,}|Authorization:[[:space:]]*Bearer[[:space:]]+[^[:space:]]{8,})'
-
+ 
 R='\033[1;31m' G='\033[1;32m' Y='\033[1;33m' C='\033[1;36m' W='\033[1;37m' D='\033[0m'
-
+ 
 # ── GLOBALS ───────────────────────────────────────────────────────────────────
 declare -a FOLDER_PATHS=()
 declare -a FOLDER_FILELISTS=()
@@ -34,12 +34,12 @@ declare -a COMMIT_FILES=()
 declare -a COMMIT_MSGS=()
 declare -a REPO_SUBDIRS=()
 declare -a NAV=()
-
+ 
 STEP=1
 SEL_IDX=-1
 SEL_PATH=""
 TARGET_REPO_DIR="" TARGET_REMOTE="" TARGET_LABEL="" TARGET_SUBFOLDER="" TARGET_FULL=""
-
+ 
 # ── NAV ───────────────────────────────────────────────────────────────────────
 nav_push() { NAV+=("$STEP"); }
 nav_back() {
@@ -54,7 +54,7 @@ hdr() {
     echo -e "${W}  SECURE GITHUB SYNC   $DATE  $TIME${D}"
     echo -e "${W}═══════════════════════════════════════════════════${D}\n"
 }
-
+ 
 # ── SECURITY ──────────────────────────────────────────────────────────────────
 _safe_ext() {
     local base ext f="$1"
@@ -71,7 +71,7 @@ _safe_ext() {
     done
     return 1
 }
-
+ 
 _blocked_name() {
     local base f="$1"
     base=$(basename "$f")
@@ -87,7 +87,7 @@ _blocked_name() {
     done
     return 1
 }
-
+ 
 _blocked_path() {
     local f="$1" d
     for d in "${BLOCK_DIRS[@]}"; do
@@ -95,7 +95,7 @@ _blocked_path() {
     done
     return 1
 }
-
+ 
 _binary() {
     local mime
     mime=$(file --mime-type -b "$1" 2>/dev/null || echo "application/octet-stream")
@@ -104,11 +104,11 @@ _binary() {
     esac
     return 0
 }
-
+ 
 _secret() {
     grep -Eiq "$SECRET_RE" "$1" 2>/dev/null
 }
-
+ 
 scan() {
     local f="$1"
     if _blocked_name "$f"; then
@@ -134,12 +134,12 @@ scan() {
     echo -e "  ${G}✓ PASS${D}   $(basename "$f")"
     return 0
 }
-
+ 
 # ── DETECT ────────────────────────────────────────────────────────────────────
 detect_folders() {
     FOLDER_PATHS=()
     FOLDER_FILELISTS=()
-
+ 
     local since_flag=()
     if [[ -f "$LAST_SYNC" ]]; then
         since_flag=(-newer "$LAST_SYNC")
@@ -147,19 +147,19 @@ detect_folders() {
         touch -d "7 days ago" /tmp/.sync_ref 2>/dev/null || true
         since_flag=(-newer /tmp/.sync_ref)
     fi
-
+ 
     local exclude=()
     local d
     for d in "${BLOCK_DIRS[@]}"; do
         exclude+=(-not -path "*/$d/*" -not -path "*/$d")
     done
     exclude+=(-not -path "$WORK_DIR/*" -not -path "$RESEARCH_DIR/*")
-
+ 
     local f dir found i
     while IFS= read -r f; do
         [[ -z "$f" ]] && continue
-        # skip already pushed files
-        if [[ -f "$PUSHED_FILES" ]] && grep -qxF "$f" "$PUSHED_FILES"; then
+        # skip already pushed files (path|timestamp)
+        if [[ -f "$PUSHED_FILES" ]] && grep -qF "$f|$(stat -c %Y "$f")" "$PUSHED_FILES"; then
             continue
         fi
         dir=$(dirname "$f")
@@ -178,7 +178,7 @@ detect_folders() {
         fi
     done < <(find "${WATCH_DIRS[@]}" -type f "${since_flag[@]}" "${exclude[@]}" 2>/dev/null | sort)
 }
-
+ 
 # ── LAST SYNC ─────────────────────────────────────────────────────────────────
 show_last_sync() {
     [[ ! -f "$LOG_FILE" ]] && return
@@ -194,7 +194,7 @@ show_last_sync() {
     done
     echo ""
 }
-
+ 
 # ── STEP 1: FOLDER ────────────────────────────────────────────────────────────
 step_folder() {
     while true; do
@@ -217,8 +217,8 @@ step_folder() {
         hint
         read -r sel
         case "$sel" in
-            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
-            b|B) rm -f "$PUSHED_FILES"; exit 0 ;;
+            q|Q) exit 0 ;;
+            b|B) exit 0 ;;
         esac
         if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#FOLDER_PATHS[@]} )); then
             SEL_IDX=$((sel-1))
@@ -227,7 +227,7 @@ step_folder() {
         fi
     done
 }
-
+ 
 # ── STEP 2: FILES ─────────────────────────────────────────────────────────────
 step_files() {
     while true; do
@@ -246,7 +246,7 @@ step_files() {
         hint
         read -r sel
         case "$sel" in
-            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
+            q|Q) exit 0 ;;
             b|B) nav_back; return ;;
         esac
         SELECTED_FILES=()
@@ -266,7 +266,7 @@ step_files() {
         nav_push; STEP=3; return
     done
 }
-
+ 
 # ── STEP 3: SCAN ──────────────────────────────────────────────────────────────
 step_scan() {
     hdr
@@ -291,12 +291,12 @@ step_scan() {
     hint
     read -r sel
     case "$sel" in
-        q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
+        q|Q) exit 0 ;;
         b|B) nav_back; return ;;
         y|Y) nav_push; STEP=4; return ;;
     esac
 }
-
+ 
 # ── STEP 4: MESSAGES ──────────────────────────────────────────────────────────
 step_messages() {
     while true; do
@@ -307,22 +307,22 @@ step_messages() {
         hint
         read -r mode
         case "$mode" in
-            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
+            q|Q) exit 0 ;;
             b|B) nav_back; return ;;
             o|O|i|I) ;;
             *) continue ;;
         esac
-
+ 
         COMMIT_MSGS=()
         local f msg ok=1
-
+ 
         if [[ "$mode" == "o" || "$mode" == "O" ]]; then
             while true; do
                 echo -e "\n  message for all: "
                 read -r msg
                 case "$msg" in
                     b|B) nav_back; return ;;
-                    q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
+                    q|Q) exit 0 ;;
                 esac
                 [[ -z "$msg" ]] && echo -e "  ${R}cannot be empty${D}" && continue
                 break
@@ -337,7 +337,7 @@ step_messages() {
                     read -r msg
                     case "$msg" in
                         b|B) nav_back; return ;;
-                        q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
+                        q|Q) exit 0 ;;
                     esac
                     [[ -z "$msg" ]] && msg="update $(basename "$f")"
                     break
@@ -345,11 +345,11 @@ step_messages() {
                 COMMIT_MSGS+=("$msg")
             done
         fi
-
+ 
         nav_push; STEP=5; return
     done
 }
-
+ 
 # ── STEP 5: TARGET ────────────────────────────────────────────────────────────
 step_target() {
     while true; do
@@ -360,18 +360,18 @@ step_target() {
         hint
         read -r sel
         case "$sel" in
-            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
+            q|Q) exit 0 ;;
             b|B) nav_back; return ;;
             1) TARGET_REPO_DIR="$WORK_DIR"; TARGET_REMOTE="$WORK_REMOTE"; TARGET_LABEL="work" ;;
             2) TARGET_REPO_DIR="$RESEARCH_DIR"; TARGET_REMOTE="$RESEARCH_REMOTE"; TARGET_LABEL="research" ;;
             *) continue ;;
         esac
-
+ 
         if [[ ! -d "$TARGET_REPO_DIR/.git" ]]; then
             echo -e "${Y}  cloning $TARGET_LABEL...${D}"
             git clone "$TARGET_REMOTE" "$TARGET_REPO_DIR" || { sleep 2; continue; }
         fi
-
+ 
         while true; do
             hdr
             echo -e "${W}  subfolder in $TARGET_LABEL:${D}\n"
@@ -388,7 +388,7 @@ step_target() {
             hint
             read -r fsel
             case "$fsel" in
-                q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
+                q|Q) exit 0 ;;
                 b|B) break ;;
                 n|N)
                     while true; do
@@ -409,7 +409,7 @@ step_target() {
         done
     done
 }
-
+ 
 # ── STEP 6: PREVIEW ───────────────────────────────────────────────────────────
 step_preview() {
     while true; do
@@ -427,50 +427,50 @@ step_preview() {
         read -r sel
         case "$sel" in
             y|Y) STEP=7; return ;;
-            q|Q) rm -f "$PUSHED_FILES"; exit 0 ;;
+            q|Q) exit 0 ;;
             b|B) nav_back; return ;;
         esac
     done
 }
-
+ 
 # ── STEP 7: PUSH ──────────────────────────────────────────────────────────────
 do_push() {
     hdr
     cd "$TARGET_REPO_DIR" || { echo -e "${R}  cannot cd${D}"; exit 1; }
     local BRANCH
     BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
-
+ 
     echo -e "${W}  pulling...${D}"
     git pull --rebase origin "$BRANCH" 2>&1 | sed 's/^/  /' || true
     echo ""
-
+ 
     mkdir -p "$TARGET_FULL"
     local pushed=0 failed=0 i f rel
-
+ 
     for i in "${!COMMIT_FILES[@]}"; do
         f="${COMMIT_FILES[$i]}"
         rel=$(basename "$f")
-
+ 
         if ! cp "$f" "$TARGET_FULL/$rel"; then
             echo -e "  ${R}✗${D}  $rel  — copy failed"
             failed=$((failed+1))
             continue
         fi
-
+ 
         git add "$TARGET_SUBFOLDER/$rel"
-
+ 
         if git commit -m "${COMMIT_MSGS[$i]}" 2>&1 | grep -v '^$' | sed 's/^/  /'; then
             echo -e "  ${G}✓${D}  $rel"
             pushed=$((pushed+1))
-            echo "$f" >> "$PUSHED_FILES"
+            echo "$f|$(stat -c %Y "$f")" >> "$PUSHED_FILES"
         else
             echo -e "  ${R}✗${D}  $rel  — commit failed"
             failed=$((failed+1))
         fi
     done
-
+ 
     [[ $pushed -eq 0 ]] && { echo -e "\n  ${R}nothing pushed${D}"; exit 1; }
-
+ 
     echo -e "\n${W}  pushing...${D}"
     local ok=0 attempt
     for attempt in 1 2 3; do
@@ -478,11 +478,11 @@ do_push() {
         echo -e "  ${Y}retry $attempt/3...${D}"; sleep 2
     done
     [[ $ok -eq 0 ]] && { echo -e "  ${R}push failed${D}"; exit 1; }
-
+ 
     for i in "${!COMMIT_FILES[@]}"; do
         echo "$DATE | $(basename "${COMMIT_FILES[$i]}") | ${COMMIT_MSGS[$i]} | $TARGET_SUBFOLDER | $TARGET_LABEL" >> "$LOG_FILE"
     done
-
+ 
     echo -e "\n${G}── DONE ────────────────────────────────────────${D}"
     echo -e "  repo    : github.com/ephemeris-void/$TARGET_LABEL"
     echo -e "  folder  : $TARGET_SUBFOLDER"
@@ -491,13 +491,13 @@ do_push() {
     [[ $failed -gt 0 ]] && echo -e "  ${R}failed  : $failed${D}"
     echo -e "  time    : $TIME\n"
 }
-
+ 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 hdr
 echo -e "${W}  scanning for modified files...${D}\n"
 rm -f "$PUSHED_FILES"
 detect_folders
-
+ 
 while true; do
     case "$STEP" in
         1) step_folder ;;
