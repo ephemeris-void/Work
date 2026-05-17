@@ -12,7 +12,7 @@ PUSHED_FILES="$HOME/.pushed_files"
 DATE=$(date +%Y-%m-%d)
 TIME=$(date +%H:%M:%S)
 
-WATCH_DIRS=("$HOME/lab" "$HOME/work" "$HOME/notes" "$HOME/re" "$HOME/new_cast" "$HOME/tools")
+WATCH_DIRS=("$HOME/lab" "$HOME/work" "$HOME/notes" "$HOME/re" "$HOME/new_cast" "$HOME/tools" "$HOME/tool")
 
 SAFE_EXT=(c cc cpp cxx h hh hpp hxx py sh bash zsh rs go js ts json yaml yml toml xml md txt rst tex html css java csv cmake asm s S)
 SAFE_NAMES=(Makefile CMakeLists.txt README LICENSE package.xml .gitignore)
